@@ -10,7 +10,7 @@ export const AVAILABLE_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow'
 export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green'];
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
-export const createEmptyFabricBlock = (): FabricBlockData => ({ color: LIMITED_FABRIC_COLORS[0], hidden: false });
+export const createEmptyFabricBlock = (): FabricBlockData => ({ color: LIMITED_FABRIC_COLORS[0] });
 
 export const createDefaultLevelData = (): LevelData => ({
   level: DEFAULT_LEVEL_NUMBER,

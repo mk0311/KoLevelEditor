@@ -108,8 +108,6 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
     >
       {columns.map((column, cIdx) => 
         column.slice(0, maxFabricHeight).map((block, bIdx) => {
-          if (block.hidden) return null;
-          
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
           // Draw from bottom up
           const y = height - (bIdx + 1) * CELL_SIZE + FABRIC_BLOCK_GAP / 2; 
@@ -124,7 +122,6 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
               height={blockHeight}
               fill={blockColor}
               rx="2"
-              opacity={block.hidden ? 0.3 : 1}
             />
           );
         })

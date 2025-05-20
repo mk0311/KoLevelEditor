@@ -10,7 +10,6 @@ export interface BobbinCell {
 
 export interface FabricBlockData {
   color: BobbinColor;
-  hidden?: boolean;
 }
 
 export interface LevelData {

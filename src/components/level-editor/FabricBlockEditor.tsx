@@ -4,7 +4,6 @@ import React from 'react';
 import type { FabricBlockData, BobbinColor } from '@/lib/types';
 import { LIMITED_FABRIC_COLORS, COLOR_MAP } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Trash2 } from 'lucide-react';
 import {
@@ -36,19 +35,15 @@ export const FabricBlockEditor: React.FC<FabricBlockEditorProps> = ({
     onBlockChange({ ...block, color });
   };
 
-  const handleHiddenToggle = (checked: boolean) => {
-    onBlockChange({ ...block, hidden: checked });
-  };
-
   return (
     <div className="flex items-center gap-2 p-2 border rounded-md bg-background hover:shadow-md transition-shadow">
       <div 
         className="w-6 h-6 rounded-sm flex-shrink-0"
-        style={{ backgroundColor: COLOR_MAP[block.color] || block.color, opacity: block.hidden ? 0.5 : 1 }}
-        aria-label={`Fabric block color ${block.color}${block.hidden ? ', hidden' : ''}`}
+        style={{ backgroundColor: COLOR_MAP[block.color] || block.color }}
+        aria-label={`Fabric block color ${block.color}`}
       />
       <Select value={block.color} onValueChange={handleColorChange}>
-        <SelectTrigger className="w-[100px] h-8 text-xs" aria-label={`Fabric block color for column ${columnIndex + 1} block ${blockIndex + 1}`}>
+        <SelectTrigger className="w-[120px] h-8 text-xs" aria-label={`Fabric block color for column ${columnIndex + 1} block ${blockIndex + 1}`}>
           <SelectValue placeholder="Color" />
         </SelectTrigger>
         <SelectContent>
@@ -62,16 +57,6 @@ export const FabricBlockEditor: React.FC<FabricBlockEditorProps> = ({
           ))}
         </SelectContent>
       </Select>
-
-      <div className="flex items-center space-x-1">
-        <Checkbox
-          id={`hidden-${columnIndex}-${blockIndex}`}
-          checked={!!block.hidden}
-          onCheckedChange={(checked) => handleHiddenToggle(Boolean(checked))}
-          aria-label={`Hidden state for fabric block column ${columnIndex + 1} block ${blockIndex + 1}`}
-        />
-        <Label htmlFor={`hidden-${columnIndex}-${blockIndex}`} className="text-xs">Hidden</Label>
-      </div>
       
       <Button
         variant="ghost"
