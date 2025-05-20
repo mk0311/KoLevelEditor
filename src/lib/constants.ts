@@ -7,7 +7,7 @@ export const DEFAULT_FABRIC_COLS = 4;
 export const DEFAULT_MAX_FABRIC_HEIGHT = 8;
 
 export const AVAILABLE_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple'];
-export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green'];
+export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple'];
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
 export const createEmptyFabricBlock = (): FabricBlockData => ({ color: LIMITED_FABRIC_COLORS[0] });
