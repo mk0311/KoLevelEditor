@@ -6,7 +6,7 @@ import { LIMITED_FABRIC_COLORS, COLOR_MAP } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Trash2, Square, CheckSquare } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -41,7 +41,7 @@ export const FabricBlockEditor: React.FC<FabricBlockEditorProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 border rounded-md bg-background hover:shadow-sm transition-shadow">
+    <div className="flex items-center gap-2 p-2 border rounded-md bg-background hover:shadow-md transition-shadow">
       <div 
         className="w-6 h-6 rounded-sm flex-shrink-0"
         style={{ backgroundColor: COLOR_MAP[block.color] || block.color, opacity: block.hidden ? 0.5 : 1 }}

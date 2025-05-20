@@ -139,7 +139,7 @@ export const FabricGridEditor: React.FC = () => {
                 ))}
               </div>
               {column.length < maxFabricHeight && (
-                <Button variant="outline" size="sm" onClick={() => addBlock(colIndex)} className="mt-2 text-xs">
+                <Button variant="outline" size="sm" onClick={() => addBlock(colIndex)} className="mt-2 text-sm">
                   <PlusCircle className="mr-1 h-3.5 w-3.5" /> Add Block
                 </Button>
               )}
