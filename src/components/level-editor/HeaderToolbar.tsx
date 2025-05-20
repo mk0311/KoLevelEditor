@@ -1,11 +1,11 @@
 
 "use client";
-import React, { useRef } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLevelData } from '@/contexts/LevelDataContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Download, Upload, Save, PlusSquare, Moon, Sun, Undo, Redo } from 'lucide-react';
+import { Download, PlusSquare, Moon, Sun, Undo, Redo } from 'lucide-react';
 import type { LevelData } from '@/lib/types';
 import { createDefaultLevelData } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -20,19 +20,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// Mock Firestore save function
-const saveToFirestore = async (levelData: LevelData) => {
-  console.log('Saving to Firestore (mock):', levelData);
-  // In a real app, this would interact with Firebase
-  return new Promise(resolve => setTimeout(resolve, 1000));
-};
-
 
 export const HeaderToolbar: React.FC = () => {
-  const { levelData, setLevelData, loadLevelData, undo, redo, canUndo, canRedo, resetLevelData } = useLevelData();
+  const { levelData, setLevelData, undo, redo, canUndo, canRedo, resetLevelData } = useLevelData();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLevelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newLevel = parseInt(e.target.value, 10);
@@ -44,39 +36,6 @@ export const HeaderToolbar: React.FC = () => {
   const handleNew = () => {
     resetLevelData(createDefaultLevelData());
     toast({ title: "New Level", description: "Empty level created." });
-  };
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string) as LevelData;
-          // Basic validation could be added here before loading
-          loadLevelData(importedData);
-          toast({ title: "Import Successful", description: `Level ${importedData.level} loaded.` });
-        } catch (error) {
-          console.error("Failed to import JSON:", error);
-          toast({ title: "Import Failed", description: "Invalid JSON file.", variant: "destructive" });
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const triggerImport = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleSave = async () => {
-    try {
-      await saveToFirestore(levelData);
-      toast({ title: "Save Successful", description: `Level ${levelData.level} saved to Firestore.` });
-    } catch (error) {
-      console.error("Failed to save to Firestore:", error);
-      toast({ title: "Save Failed", description: "Could not save to Firestore.", variant: "destructive" });
-    }
   };
 
   const handleDownload = () => {
@@ -125,10 +84,6 @@ export const HeaderToolbar: React.FC = () => {
             </AlertDialogContent>
           </AlertDialog>
           
-          <Button variant="outline" size="sm" onClick={triggerImport}><Upload className="mr-1 h-4 w-4" /> Import JSON</Button>
-          <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
-          
-          <Button variant="outline" size="sm" onClick={handleSave}><Save className="mr-1 h-4 w-4" /> Save to Firestore</Button>
           <Button variant="outline" size="sm" onClick={handleDownload}><Download className="mr-1 h-4 w-4" /> Download JSON</Button>
           
           <Button variant="ghost" size="icon" onClick={undo} disabled={!canUndo} aria-label="Undo">

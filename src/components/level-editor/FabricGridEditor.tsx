@@ -8,7 +8,6 @@ import type { FabricBlockData } from '@/lib/types';
 import { createEmptyFabricBlock } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2 } from 'lucide-react';
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,11 +95,10 @@ export const FabricGridEditor: React.FC = () => {
     <div className="p-4 bg-card rounded-lg shadow">
       <h3 className="text-lg font-semibold mb-3 text-primary">Fabric Grid Editor</h3>
       <div className="flex gap-4 mb-4 items-end">
-        <NumberSpinner id="fabric-cols" label="Columns" value={cols} onChange={handleColsChange} min={1} max={10} />
+        <NumberSpinner id="fabric-cols" label="Columns" value={cols} onChange={handleColsChange} min={1} max={20} /> {/* Increased max for demonstration, adjust as needed */}
         <NumberSpinner id="fabric-max-height" label="Max Height" value={maxFabricHeight} onChange={handleMaxHeightChange} min={1} max={20} />
       </div>
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-3 pb-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pb-4">
           {columns.map((column, colIndex) => (
             <div key={colIndex} className="flex flex-col gap-1 p-2 border rounded-md bg-muted/50 min-w-[240px]">
               <div className="flex justify-between items-center mb-1">
@@ -125,7 +123,7 @@ export const FabricGridEditor: React.FC = () => {
                     </AlertDialogContent>
                   </AlertDialog>
               </div>
-              <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1 custom-scrollbar"> {/* Added custom-scrollbar class if needed */}
                 {column.map((block, blockIndex) => (
                   <FabricBlockEditor
                     key={blockIndex}
@@ -149,9 +147,6 @@ export const FabricGridEditor: React.FC = () => {
             </div>
           ))}
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
     </div>
   );
 };
-
