@@ -10,9 +10,9 @@ import { PopoverClose } from '@radix-ui/react-popover';
 
 
 interface FabricBlockPopoverProps {
-  blockData: FabricBlockData | null;
-  colIndex: number; // 0-indexed
-  rowIndexInVisualizer: number; // 0-indexed, top-down visual index
+  blockData: FabricBlockData | null | undefined; // Allow undefined for truly empty slots
+  colIndex: number; 
+  rowIndexInVisualizer: number; 
   onBlockChange: (newBlockData: FabricBlockData | null) => void;
 }
 
@@ -30,8 +30,7 @@ export const FabricBlockPopover: React.FC<FabricBlockPopoverProps> = ({
     onBlockChange(null);
   };
 
-  // Determine the true block index (bottom-up) if needed for display, though visual is fine
-  // const blockDisplayRow = rowIndexInVisualizer + 1; // Using visual top-down row for simplicity
+  const currentBlockExists = blockData !== null && blockData !== undefined;
 
   return (
     <div className="space-y-3 p-1">
@@ -51,7 +50,7 @@ export const FabricBlockPopover: React.FC<FabricBlockPopoverProps> = ({
                 onClick={() => handleColorSelect(color)}
                 aria-label={`Select color ${color}`}
               >
-                {blockData?.color === color && (
+                {currentBlockExists && blockData?.color === color && (
                   <Check className="h-4 w-4 text-white mix-blend-difference" />
                 )}
               </Button>
@@ -59,7 +58,7 @@ export const FabricBlockPopover: React.FC<FabricBlockPopoverProps> = ({
           ))}
         </div>
       </div>
-      {blockData && (
+      {currentBlockExists && (
         <div>
           <PopoverClose asChild>
             <Button

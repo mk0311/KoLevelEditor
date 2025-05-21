@@ -11,7 +11,7 @@ export const AVAILABLE_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow'
 export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple'];
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
-// Creates an actual fabric block object, not a null placeholder
+// Creates an actual fabric block object
 export const createFabricBlock = (color?: BobbinColor): FabricBlockData => ({ color: color || LIMITED_FABRIC_COLORS[0] });
 
 export const createDefaultLevelData = (): LevelData => ({
@@ -28,12 +28,10 @@ export const createDefaultLevelData = (): LevelData => ({
     maxFabricHeight: DEFAULT_MAX_FABRIC_HEIGHT,
     columns: Array(DEFAULT_FABRIC_COLS)
       .fill(null)
-      .map(() => Array(DEFAULT_MAX_FABRIC_HEIGHT).fill(null)), // Initialize with nulls
+      .map(() => []), // Initialize with empty arrays for sparse columns
   },
 });
 
-// EXAMPLE_LEVEL_DATA might need adjustment if used, to reflect (FabricBlockData | null)[][]
-// For now, focusing on the default creation.
 export const EXAMPLE_LEVEL_DATA: LevelData = {
   level: 1,
   bobbinArea: {
@@ -66,18 +64,13 @@ export const EXAMPLE_LEVEL_DATA: LevelData = {
   fabricArea: {
     cols: 4,
     maxFabricHeight: 8,
-    // Example data now needs to be an array of (FabricBlockData | null)
-    // Each inner array should have length maxFabricHeight
+    // Fabric columns are now sparse, blocks listed bottom-up
     columns: [
-      [{ color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }],
-      [{ color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Red" }],
-      [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Green" }],
-      [{ color: "Red" }, { color: "Blue" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }],
-    ].map(col => { // Ensure example columns match maxFabricHeight, padding with null if needed
-        const newCol = [...col];
-        while(newCol.length < 8) newCol.push(null);
-        return newCol.slice(0, 8);
-    }),
+      [{ color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8), // Example: All 8 blocks
+      [{ color: "Blue" }, { color: "Green" }, { color: "Red" }].slice(0,8), // Example: 3 blocks
+      [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8), // Example: 6 blocks
+      [], // Example: Empty column
+    ].map(col => col.filter(block => block !== null)), // Ensure no nulls from slicing if example was shorter
   },
 };
 

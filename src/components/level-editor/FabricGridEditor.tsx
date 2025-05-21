@@ -3,8 +3,7 @@
 import React from 'react';
 import { useLevelData } from '@/contexts/LevelDataContext';
 import { NumberSpinner } from '@/components/shared/NumberSpinner';
-import type { FabricBlockData } from '@/lib/types';
-import { createFabricBlock, LIMITED_FABRIC_COLORS } from '@/lib/constants'; // createFabricBlock for actual blocks
+import type { FabricBlockData } from '@/lib/types'; // FabricBlockData is still needed for type consistency
 
 export const FabricGridEditor: React.FC = () => {
   const { levelData, setLevelData } = useLevelData();
@@ -13,11 +12,9 @@ export const FabricGridEditor: React.FC = () => {
   const handleColsChange = (newCols: number) => {
     setLevelData(draft => {
       const currentCols = draft.fabricArea.cols;
-      const currentMaxHeight = draft.fabricArea.maxFabricHeight; // Use current max height for new columns
-
       if (newCols > currentCols) {
         for (let i = currentCols; i < newCols; i++) {
-          draft.fabricArea.columns.push(Array(currentMaxHeight).fill(null));
+          draft.fabricArea.columns.push([]); // Add new empty columns (sparse arrays)
         }
       } else if (newCols < currentCols) {
         draft.fabricArea.columns = draft.fabricArea.columns.slice(0, newCols);
@@ -29,13 +26,10 @@ export const FabricGridEditor: React.FC = () => {
   const handleMaxHeightChange = (newMaxHeight: number) => {
     setLevelData(draft => {
       draft.fabricArea.columns.forEach(column => {
-        const currentColumnHeight = column.length;
-        if (newMaxHeight > currentColumnHeight) {
-          for (let i = currentColumnHeight; i < newMaxHeight; i++) {
-            column.push(null);
-          }
-        } else if (newMaxHeight < currentColumnHeight) {
-          column.splice(newMaxHeight);
+        // If new max height is smaller, remove blocks that are now too high.
+        // Blocks are stored bottom-up, so if column.length > newMaxHeight, slice it.
+        if (column.length > newMaxHeight) {
+          column.splice(newMaxHeight); // Keep only the bottom `newMaxHeight` blocks
         }
       });
       draft.fabricArea.maxFabricHeight = newMaxHeight;
@@ -51,7 +45,7 @@ export const FabricGridEditor: React.FC = () => {
       </div>
       <p className="text-sm text-muted-foreground">
         Adjust the number of columns and the maximum height for the fabric area.
-        Click on the blocks in the "Fabric Area Preview" below to add or change colors.
+        Click on the blocks in the "Fabric Area Preview" below to add, change, or remove colors.
       </p>
     </div>
   );

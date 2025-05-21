@@ -112,18 +112,20 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
     >
       {Array.from({ length: cols }).map((_, cIdx) => 
         Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { 
-          const bIdxInColumn = maxFabricHeight - 1 - bIdxInVis; 
+          // bIdxInVis is 0-indexed from top visual row
+          // bIdxInColumnData is 0-indexed from bottom data layer
+          const bIdxInColumnData = maxFabricHeight - 1 - bIdxInVis; 
 
-          const blockData = columns[cIdx]?.[bIdxInColumn];
+          const currentBlock = columns[cIdx]?.[bIdxInColumnData]; // May be undefined if slot is empty
 
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
           const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
 
-          const fillColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : FABRIC_EMPTY_SLOT_COLOR;
-          const strokeColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : "hsl(var(--border))";
+          const fillColor = currentBlock ? (COLOR_MAP[currentBlock.color] || currentBlock.color) : FABRIC_EMPTY_SLOT_COLOR;
+          const strokeColor = currentBlock ? (COLOR_MAP[currentBlock.color] || currentBlock.color) : "hsl(var(--border))";
 
           return (
-            <Popover key={`fabric-popover-${cIdx}-${bIdxInColumn}`}>
+            <Popover key={`fabric-popover-${cIdx}-${bIdxInVis}`}>
               <PopoverTrigger asChild>
                 <rect
                   x={x}
@@ -132,28 +134,56 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                   height={blockDisplayHeight}
                   fill={fillColor}
                   stroke={strokeColor}
-                  strokeWidth={blockData ? 1 : 0.5}
+                  strokeWidth={currentBlock ? 1 : 0.5}
                   rx="2"
                   style={{ cursor: 'pointer' }}
                   aria-label={
-                    blockData 
-                      ? `Fabric block color ${blockData.color}, column ${cIdx + 1}, visual row ${bIdxInVis + 1}. Click to edit.` 
+                    currentBlock 
+                      ? `Fabric block color ${currentBlock.color}, column ${cIdx + 1}, visual row ${bIdxInVis + 1}. Click to edit.` 
                       : `Empty fabric slot, column ${cIdx + 1}, visual row ${bIdxInVis + 1}. Click to add/edit block.`
                   }
                 />
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <FabricBlockPopover
-                  blockData={blockData}
+                  blockData={currentBlock || null} // Pass null if undefined for popover
                   colIndex={cIdx}
-                  rowIndexInVisualizer={bIdxInVis}
-                  onBlockChange={(newBlockState) => {
+                  rowIndexInVisualizer={bIdxInVis} // Popover might use this for display, or we could pass bIdxInColumnData
+                  onBlockChange={(newBlockState: FabricBlockData | null) => {
                     setLevelData(draft => {
-                      // Ensure column exists in draft
+                      // Ensure column array exists
                       if (!draft.fabricArea.columns[cIdx]) {
-                        draft.fabricArea.columns[cIdx] = Array(draft.fabricArea.maxFabricHeight).fill(null);
+                        draft.fabricArea.columns[cIdx] = [];
                       }
-                      draft.fabricArea.columns[cIdx][bIdxInColumn] = newBlockState;
+                      const columnDraft = draft.fabricArea.columns[cIdx];
+                      
+                      // Pad with temporary nulls if needed to reach the target index
+                      while (columnDraft.length <= bIdxInColumnData && newBlockState !== null) {
+                        columnDraft.push(null as any); // Temporarily push null
+                      }
+
+                      if (newBlockState === null) { // Removing a block
+                        if (bIdxInColumnData < columnDraft.length) {
+                           columnDraft[bIdxInColumnData] = null as any; // Mark for removal
+                        }
+                      } else { // Adding or updating a block
+                         if (bIdxInColumnData < columnDraft.length) {
+                            columnDraft[bIdxInColumnData] = newBlockState;
+                         } else {
+                            // This case should ideally be handled by padding above
+                            // or ensuring only valid slots (up to maxHeight) are targeted.
+                            // For safety, if trying to add beyond current padded length but within maxHeight:
+                            if (bIdxInColumnData < draft.fabricArea.maxFabricHeight) {
+                                columnDraft[bIdxInColumnData] = newBlockState;
+                            }
+                         }
+                      }
+                      
+                      // Compact the array: remove all nulls and keep only FabricBlockData
+                      // Also ensure the column does not exceed maxFabricHeight
+                      draft.fabricArea.columns[cIdx] = columnDraft
+                        .filter(block => block !== null && block !== undefined)
+                        .slice(0, draft.fabricArea.maxFabricHeight) as FabricBlockData[];
                     });
                   }}
                 />
@@ -195,4 +225,3 @@ export const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ editorType, clas
     </div>
   );
 };
-

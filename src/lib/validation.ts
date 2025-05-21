@@ -51,19 +51,19 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
 
   const fabricColorsUsed = new Set<BobbinColor>();
   data.fabricArea.columns.forEach((column, cIdx) => {
-    if (column.length !== data.fabricArea.maxFabricHeight) {
-      messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Column ${cIdx + 1} length (${column.length}) does not match max fabric height (${data.fabricArea.maxFabricHeight}).` });
+    // column is now FabricBlockData[]
+    if (column.length > data.fabricArea.maxFabricHeight) {
+      messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Column ${cIdx + 1} actual block count (${column.length}) exceeds max fabric height (${data.fabricArea.maxFabricHeight}).` });
     }
-    column.forEach((block: FabricBlockData | null, bIdx) => {
-      if (block) { // If block is not null, it's a FabricBlockData
-        if (!block.color) {
-          messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Block at (Col ${cIdx + 1}, Row ${bIdx + 1}) is missing a color.` });
-        } else if (!LIMITED_FABRIC_COLORS.includes(block.color) && !/^#[0-9A-Fa-f]{6}$/.test(block.color)) {
-         // messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Fabric Area: Block at (Col ${cIdx + 1}, Row ${bIdx + 1}) has an undefined color "${block.color}".` });
-        }
-        if (block.color) {
-          fabricColorsUsed.add(block.color);
-        }
+    column.forEach((block: FabricBlockData, bIdx) => { // block is guaranteed to be FabricBlockData
+      if (!block.color) {
+        // This case should ideally not happen if createFabricBlock always assigns a color
+        messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Block at (Col ${cIdx + 1}, Stack pos ${bIdx + 1}) is missing a color.` });
+      } else if (!LIMITED_FABRIC_COLORS.includes(block.color) && !/^#[0-9A-Fa-f]{6}$/.test(block.color)) {
+       // messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Fabric Area: Block at (Col ${cIdx + 1}, Stack pos ${bIdx + 1}) has an undefined color "${block.color}".` });
+      }
+      if (block.color) {
+        fabricColorsUsed.add(block.color);
       }
     });
   });
@@ -79,7 +79,6 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
   if (data.level === undefined || data.level < 1) {
      messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Level number must be 1 or greater.` });
   }
-
 
   return messages;
 };

@@ -23,7 +23,7 @@ export interface LevelData {
   fabricArea: {
     cols: number;
     maxFabricHeight: number;
-    columns: (FabricBlockData | null)[][]; // Each column array will have maxFabricHeight elements
+    columns: FabricBlockData[][]; // Each column array contains only actual blocks, sparse
   };
 }
 
