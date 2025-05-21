@@ -2,8 +2,8 @@
 "use client";
 import React from 'react';
 import { useLevelData } from '@/contexts/LevelDataContext';
-import type { BobbinCell, FabricBlockData, LevelData } from '@/lib/types';
-import { COLOR_MAP } from '@/lib/constants';
+import type { BobbinCell, FabricBlockData, LevelData, BobbinColor } from '@/lib/types';
+import { COLOR_MAP, LIMITED_FABRIC_COLORS, createFabricBlock } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface LiveVisualizerProps {
@@ -15,7 +15,8 @@ const CELL_SIZE = 32; // px
 const SPOOL_WIDTH_RATIO = 0.8;
 const SPOOL_END_HEIGHT_RATIO = 0.2;
 const PIPE_RADIUS_RATIO = 0.25;
-const FABRIC_BLOCK_GAP = 2;
+const FABRIC_BLOCK_GAP = 2; // Gap between blocks in fabric visualizer
+const FABRIC_EMPTY_SLOT_COLOR = "hsl(var(--muted) / 0.5)"; // Color for empty clickable slots
 
 const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: boolean}> = ({ data, hasErrors }) => {
   const { rows, cols, cells } = data;
@@ -35,7 +36,6 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
           const x = cIdx * CELL_SIZE;
           const y = rIdx * CELL_SIZE;
           
-          // Base for empty/hidden cells
           let cellElement = <rect x={x} y={y} width={CELL_SIZE} height={CELL_SIZE} fill="hsl(var(--muted))" />;
 
           if (cell.type === 'hidden' && cell.color) {
@@ -78,10 +78,9 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
             );
           }
           
-          return <React.Fragment key={`${rIdx}-${cIdx}`}>{cellElement}</React.Fragment>;
+          return <React.Fragment key={`bobbin-${rIdx}-${cIdx}`}>{cellElement}</React.Fragment>;
         })
       )}
-       {/* Grid lines */}
       {Array.from({ length: rows + 1 }).map((_, i) => (
         <line key={`h-line-${i}`} x1="0" y1={i * CELL_SIZE} x2={width} y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.5" />
       ))}
@@ -93,46 +92,82 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
 };
 
 const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: boolean}> = ({ data, hasErrors }) => {
+  const { setLevelData } = useLevelData();
   const { cols, maxFabricHeight, columns } = data;
-  const blockHeight = (CELL_SIZE - FABRIC_BLOCK_GAP);
-  const width = cols * CELL_SIZE;
-  const height = maxFabricHeight * CELL_SIZE;
+  
+  const blockDisplayHeight = CELL_SIZE - FABRIC_BLOCK_GAP;
+  const svgWidth = cols * CELL_SIZE;
+  const svgHeight = maxFabricHeight * CELL_SIZE;
+
+  const handleBlockClick = (colIndex: number, blockIndexInColumn: number) => {
+    // blockIndexInColumn is 0 for bottom-most block in data model
+    setLevelData(draft => {
+      const fabricAreaDraft = draft.fabricArea;
+      // Ensure column exists (should, due to how cols are managed)
+      if (!fabricAreaDraft.columns[colIndex]) fabricAreaDraft.columns[colIndex] = Array(fabricAreaDraft.maxFabricHeight).fill(null);
+      
+      const currentBlock = fabricAreaDraft.columns[colIndex][blockIndexInColumn];
+
+      if (currentBlock === null) { // Clicked an empty slot
+        fabricAreaDraft.columns[colIndex][blockIndexInColumn] = createFabricBlock(LIMITED_FABRIC_COLORS[0]);
+      } else { // Clicked an existing block
+        const currentColor = currentBlock.color;
+        const currentColorIndex = LIMITED_FABRIC_COLORS.indexOf(currentColor);
+        const nextColorIndex = (currentColorIndex + 1) % LIMITED_FABRIC_COLORS.length;
+        fabricAreaDraft.columns[colIndex][blockIndexInColumn]!.color = LIMITED_FABRIC_COLORS[nextColorIndex];
+      }
+    });
+  };
 
   return (
     <svg 
-      width={width} 
-      height={height} 
-      viewBox={`0 0 ${width} ${height}`} 
-      className={cn("border rounded-md bg-background shadow-inner", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
-      aria-label="Fabric area visualization"
+      width={svgWidth} 
+      height={svgHeight} 
+      viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
+      className={cn("border rounded-md bg-background shadow-inner cursor-pointer", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
+      aria-label="Fabric area visualization (interactive)"
     >
-      {columns.map((column, cIdx) => 
-        column.slice(0, maxFabricHeight).map((block, bIdx) => {
+      {Array.from({ length: cols }).map((_, cIdx) => 
+        Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { // bIdxInVis is 0 for top-most visual block in column
+          // Data model's blockIndex is 0 for bottom-most.
+          // bIdxInColumn is the index in fabricArea.columns[cIdx] array
+          const bIdxInColumn = maxFabricHeight - 1 - bIdxInVis; 
+
+          const blockData = columns[cIdx]?.[bIdxInColumn]; // columns[cIdx] might not exist if cols was just reduced
+                                                         // and data hasn't caught up, or if it's a new column.
+                                                         // Also, columns[cIdx][bIdxInColumn] can be null.
+
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
-          // Draw from bottom up
-          const y = height - (bIdx + 1) * CELL_SIZE + FABRIC_BLOCK_GAP / 2; 
-          const blockColor = COLOR_MAP[block.color] || block.color;
+          const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2; // y=0 is top
+
+          const fillColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : FABRIC_EMPTY_SLOT_COLOR;
+          const strokeColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : "hsl(var(--border))";
 
           return (
             <rect
-              key={`${cIdx}-${bIdx}`}
+              key={`fabric-${cIdx}-${bIdxInColumn}`}
               x={x}
               y={y}
               width={CELL_SIZE - FABRIC_BLOCK_GAP}
-              height={blockHeight}
-              fill={blockColor}
+              height={blockDisplayHeight}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={blockData ? 1 : 0.5}
               rx="2"
+              onClick={() => handleBlockClick(cIdx, bIdxInColumn)}
+              style={{ cursor: 'pointer' }}
+              aria-label={blockData ? `Fabric block color ${blockData.color}, column ${cIdx + 1}, row ${maxFabricHeight - bIdxInColumn}` : `Empty fabric slot, column ${cIdx + 1}, row ${maxFabricHeight - bIdxInColumn}`}
             />
           );
         })
       )}
-      {/* Max height indicator lines */}
-      {Array.from({ length: maxFabricHeight }).map((_, i) => (
-         <line key={`h-fabric-line-${i}`} x1="0" y1={i * CELL_SIZE} x2={width} y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5"/>
+      {/* Max height indicator lines (horizontal) */}
+      {Array.from({ length: maxFabricHeight +1 }).map((_, i) => (
+         <line key={`h-fabric-line-${i}`} x1="0" y1={i * CELL_SIZE} x2={svgWidth} y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.5" strokeDasharray={i === maxFabricHeight ? "none" : "2 2"} opacity="0.5"/>
       ))}
-      {/* Column separator lines */}
+      {/* Column separator lines (vertical) */}
        {Array.from({ length: cols + 1 }).map((_, i) => (
-        <line key={`v-fabric-line-${i}`} x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2={height} stroke="hsl(var(--border))" strokeWidth="0.5" />
+        <line key={`v-fabric-line-${i}`} x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2={svgHeight} stroke="hsl(var(--border))" strokeWidth="0.5" />
       ))}
     </svg>
   );
@@ -147,6 +182,7 @@ export const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ editorType, clas
     <div className={cn("p-4 bg-card rounded-lg shadow space-y-3", className)}>
       <h3 className="text-lg font-semibold text-primary">
         {editorType === 'bobbin' ? 'Bobbin Area Preview' : 'Fabric Area Preview'}
+         {editorType === 'fabric' && <span className="text-sm font-normal text-muted-foreground"> (Click to edit)</span>}
       </h3>
       <div className="flex justify-center items-center overflow-auto">
       {editorType === 'bobbin' ? (

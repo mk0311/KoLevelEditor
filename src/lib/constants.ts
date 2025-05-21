@@ -1,3 +1,4 @@
+
 import type { BobbinCell, FabricBlockData, LevelData, BobbinColor } from './types';
 
 export const DEFAULT_LEVEL_NUMBER = 1;
@@ -10,7 +11,8 @@ export const AVAILABLE_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow'
 export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple'];
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
-export const createEmptyFabricBlock = (): FabricBlockData => ({ color: LIMITED_FABRIC_COLORS[0] });
+// Creates an actual fabric block object, not a null placeholder
+export const createFabricBlock = (color?: BobbinColor): FabricBlockData => ({ color: color || LIMITED_FABRIC_COLORS[0] });
 
 export const createDefaultLevelData = (): LevelData => ({
   level: DEFAULT_LEVEL_NUMBER,
@@ -26,10 +28,12 @@ export const createDefaultLevelData = (): LevelData => ({
     maxFabricHeight: DEFAULT_MAX_FABRIC_HEIGHT,
     columns: Array(DEFAULT_FABRIC_COLS)
       .fill(null)
-      .map(() => [createEmptyFabricBlock()]), // Start with one block per column
+      .map(() => Array(DEFAULT_MAX_FABRIC_HEIGHT).fill(null)), // Initialize with nulls
   },
 });
 
+// EXAMPLE_LEVEL_DATA might need adjustment if used, to reflect (FabricBlockData | null)[][]
+// For now, focusing on the default creation.
 export const EXAMPLE_LEVEL_DATA: LevelData = {
   level: 1,
   bobbinArea: {
@@ -62,14 +66,21 @@ export const EXAMPLE_LEVEL_DATA: LevelData = {
   fabricArea: {
     cols: 4,
     maxFabricHeight: 8,
+    // Example data now needs to be an array of (FabricBlockData | null)
+    // Each inner array should have length maxFabricHeight
     columns: [
-      [ { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, ],
-      [ { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Red" }, ],
-      [ { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Green" }, ],
-      [ { color: "Red" }, { color: "Blue" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, ],
-    ],
+      [{ color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }],
+      [{ color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Red" }],
+      [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Green" }],
+      [{ color: "Red" }, { color: "Blue" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Red" }],
+    ].map(col => { // Ensure example columns match maxFabricHeight, padding with null if needed
+        const newCol = [...col];
+        while(newCol.length < 8) newCol.push(null);
+        return newCol.slice(0, 8);
+    }),
   },
 };
+
 
 export const COLOR_MAP: Record<BobbinColor, string> = {
   Red: 'hsl(var(--knitout-red))',
