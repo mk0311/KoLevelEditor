@@ -5,6 +5,9 @@ import { useLevelData } from '@/contexts/LevelDataContext';
 import type { BobbinCell, FabricBlockData, LevelData, BobbinColor } from '@/lib/types';
 import { COLOR_MAP, LIMITED_FABRIC_COLORS, createFabricBlock } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { FabricBlockPopover } from './FabricBlockPopover';
+
 
 interface LiveVisualizerProps {
   editorType: 'bobbin' | 'fabric';
@@ -99,65 +102,63 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
   const svgWidth = cols * CELL_SIZE;
   const svgHeight = maxFabricHeight * CELL_SIZE;
 
-  const handleBlockClick = (colIndex: number, blockIndexInColumn: number) => {
-    // blockIndexInColumn is 0 for bottom-most block in data model
-    setLevelData(draft => {
-      const fabricAreaDraft = draft.fabricArea;
-      // Ensure column exists (should, due to how cols are managed)
-      if (!fabricAreaDraft.columns[colIndex]) fabricAreaDraft.columns[colIndex] = Array(fabricAreaDraft.maxFabricHeight).fill(null);
-      
-      const currentBlock = fabricAreaDraft.columns[colIndex][blockIndexInColumn];
-
-      if (currentBlock === null) { // Clicked an empty slot
-        fabricAreaDraft.columns[colIndex][blockIndexInColumn] = createFabricBlock(LIMITED_FABRIC_COLORS[0]);
-      } else { // Clicked an existing block
-        const currentColor = currentBlock.color;
-        const currentColorIndex = LIMITED_FABRIC_COLORS.indexOf(currentColor);
-        const nextColorIndex = (currentColorIndex + 1) % LIMITED_FABRIC_COLORS.length;
-        fabricAreaDraft.columns[colIndex][blockIndexInColumn]!.color = LIMITED_FABRIC_COLORS[nextColorIndex];
-      }
-    });
-  };
-
   return (
     <svg 
       width={svgWidth} 
       height={svgHeight} 
       viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
-      className={cn("border rounded-md bg-background shadow-inner cursor-pointer", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
+      className={cn("border rounded-md bg-background shadow-inner", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
       aria-label="Fabric area visualization (interactive)"
     >
       {Array.from({ length: cols }).map((_, cIdx) => 
-        Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { // bIdxInVis is 0 for top-most visual block in column
-          // Data model's blockIndex is 0 for bottom-most.
-          // bIdxInColumn is the index in fabricArea.columns[cIdx] array
+        Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { 
           const bIdxInColumn = maxFabricHeight - 1 - bIdxInVis; 
 
-          const blockData = columns[cIdx]?.[bIdxInColumn]; // columns[cIdx] might not exist if cols was just reduced
-                                                         // and data hasn't caught up, or if it's a new column.
-                                                         // Also, columns[cIdx][bIdxInColumn] can be null.
+          const blockData = columns[cIdx]?.[bIdxInColumn];
 
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
-          const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2; // y=0 is top
+          const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
 
           const fillColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : FABRIC_EMPTY_SLOT_COLOR;
           const strokeColor = blockData ? (COLOR_MAP[blockData.color] || blockData.color) : "hsl(var(--border))";
 
           return (
-            <rect
-              key={`fabric-${cIdx}-${bIdxInColumn}`}
-              x={x}
-              y={y}
-              width={CELL_SIZE - FABRIC_BLOCK_GAP}
-              height={blockDisplayHeight}
-              fill={fillColor}
-              stroke={strokeColor}
-              strokeWidth={blockData ? 1 : 0.5}
-              rx="2"
-              onClick={() => handleBlockClick(cIdx, bIdxInColumn)}
-              style={{ cursor: 'pointer' }}
-              aria-label={blockData ? `Fabric block color ${blockData.color}, column ${cIdx + 1}, row ${maxFabricHeight - bIdxInColumn}` : `Empty fabric slot, column ${cIdx + 1}, row ${maxFabricHeight - bIdxInColumn}`}
-            />
+            <Popover key={`fabric-popover-${cIdx}-${bIdxInColumn}`}>
+              <PopoverTrigger asChild>
+                <rect
+                  x={x}
+                  y={y}
+                  width={CELL_SIZE - FABRIC_BLOCK_GAP}
+                  height={blockDisplayHeight}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                  strokeWidth={blockData ? 1 : 0.5}
+                  rx="2"
+                  style={{ cursor: 'pointer' }}
+                  aria-label={
+                    blockData 
+                      ? `Fabric block color ${blockData.color}, column ${cIdx + 1}, visual row ${bIdxInVis + 1}. Click to edit.` 
+                      : `Empty fabric slot, column ${cIdx + 1}, visual row ${bIdxInVis + 1}. Click to add/edit block.`
+                  }
+                />
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <FabricBlockPopover
+                  blockData={blockData}
+                  colIndex={cIdx}
+                  rowIndexInVisualizer={bIdxInVis}
+                  onBlockChange={(newBlockState) => {
+                    setLevelData(draft => {
+                      // Ensure column exists in draft
+                      if (!draft.fabricArea.columns[cIdx]) {
+                        draft.fabricArea.columns[cIdx] = Array(draft.fabricArea.maxFabricHeight).fill(null);
+                      }
+                      draft.fabricArea.columns[cIdx][bIdxInColumn] = newBlockState;
+                    });
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           );
         })
       )}
@@ -194,3 +195,4 @@ export const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ editorType, clas
     </div>
   );
 };
+
