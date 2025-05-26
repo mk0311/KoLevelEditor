@@ -12,7 +12,10 @@ export const LIMITED_FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Ye
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
 // Creates an actual fabric block object
-export const createFabricBlock = (color?: BobbinColor): FabricBlockData => ({ color: color || LIMITED_FABRIC_COLORS[0] });
+export const createFabricBlock = (color?: BobbinColor, hidden: boolean = false): FabricBlockData => ({ 
+  color: color || LIMITED_FABRIC_COLORS[0],
+  hidden,
+});
 
 export const createDefaultLevelData = (): LevelData => ({
   level: DEFAULT_LEVEL_NUMBER,
@@ -66,9 +69,9 @@ export const EXAMPLE_LEVEL_DATA: LevelData = {
     maxFabricHeight: 8,
     // Fabric columns are now sparse, blocks listed bottom-up
     columns: [
-      [{ color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8), // Example: All 8 blocks
-      [{ color: "Blue" }, { color: "Green" }, { color: "Red" }].slice(0,8), // Example: 3 blocks
-      [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8), // Example: 6 blocks
+      [{ color: "Red", hidden: false }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue", hidden: true }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8), // Example: All 8 blocks
+      [{ color: "Blue" }, { color: "Green" }, { color: "Red", hidden: false }].slice(0,8), // Example: 3 blocks
+      [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red", hidden: true }, { color: "Blue" }].slice(0,8), // Example: 6 blocks
       [], // Example: Empty column
     ].map(col => col.filter(block => block !== null)), // Ensure no nulls from slicing if example was shorter
   },
