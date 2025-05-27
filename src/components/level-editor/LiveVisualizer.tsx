@@ -2,8 +2,8 @@
 "use client";
 import React from 'react';
 import { useLevelData } from '@/contexts/LevelDataContext';
-import type { BobbinCell, FabricBlockData, LevelData, BobbinColor } from '@/lib/types';
-import { COLOR_MAP, LIMITED_FABRIC_COLORS, createFabricBlock } from '@/lib/constants';
+import type { BobbinCell, FabricBlockData, LevelData, BobbinColor, BobbinPair } from '@/lib/types';
+import { COLOR_MAP, LIMITED_FABRIC_COLORS, createFabricBlock, PAIRING_LINE_COLOR } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FabricBlockPopover } from './FabricBlockPopover';
@@ -14,14 +14,14 @@ interface LiveVisualizerProps {
   className?: string;
 }
 
-const CELL_SIZE = 32; // px
+const CELL_SIZE = 32; 
 const SPOOL_WIDTH_RATIO = 0.8;
 const SPOOL_END_HEIGHT_RATIO = 0.2;
-const FABRIC_BLOCK_GAP = 2; // Gap between blocks in fabric visualizer
-const FABRIC_EMPTY_SLOT_COLOR = "hsl(var(--muted) / 0.5)"; // Color for empty clickable slots
+const FABRIC_BLOCK_GAP = 2; 
+const FABRIC_EMPTY_SLOT_COLOR = "hsl(var(--muted) / 0.5)"; 
 
 const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: boolean}> = ({ data, hasErrors }) => {
-  const { rows, cols, cells } = data;
+  const { rows, cols, cells, pairs = [] } = data;
   const width = cols * CELL_SIZE;
   const height = rows * CELL_SIZE;
 
@@ -30,9 +30,18 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
       width={width} 
       height={height} 
       viewBox={`0 0 ${width} ${height}`} 
-      className={cn("border rounded-md bg-background shadow-inner", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
+      className={cn("border rounded-md bg-background shadow-inner overflow-visible", hasErrors && "outline outline-2 outline-offset-2 outline-destructive")}
       aria-label="Bobbin area visualization"
     >
+      {/* Grid Lines */}
+      {Array.from({ length: rows + 1 }).map((_, i) => (
+        <line key={`h-line-${i}`} x1="0" y1={i * CELL_SIZE} x2={width} y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.5" />
+      ))}
+      {Array.from({ length: cols + 1 }).map((_, i) => (
+        <line key={`v-line-${i}`} x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2={height} stroke="hsl(var(--border))" strokeWidth="0.5" />
+      ))}
+
+      {/* Cells */}
       {cells.map((row, rIdx) => 
         row.map((cell, cIdx) => {
           const x = cIdx * CELL_SIZE;
@@ -62,7 +71,7 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
             );
           }
 
-          if (cell.type === 'pipe' && cell.colors && cell.colors.length >= 2) {
+          if (cell.type === 'pipe' && cell.colors && cell.colors.length >= 1) { // Check for at least 1 color
             const numColors = cell.colors.length;
             const stripeWidth = CELL_SIZE / numColors;
             cellElement = (
@@ -86,12 +95,25 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
           return <React.Fragment key={`bobbin-${rIdx}-${cIdx}`}>{cellElement}</React.Fragment>;
         })
       )}
-      {Array.from({ length: rows + 1 }).map((_, i) => (
-        <line key={`h-line-${i}`} x1="0" y1={i * CELL_SIZE} x2={width} y2={i * CELL_SIZE} stroke="hsl(var(--border))" strokeWidth="0.5" />
-      ))}
-      {Array.from({ length: cols + 1 }).map((_, i) => (
-        <line key={`v-line-${i}`} x1={i * CELL_SIZE} y1="0" x2={i * CELL_SIZE} y2={height} stroke="hsl(var(--border))" strokeWidth="0.5" />
-      ))}
+       {/* Pairing Lines */}
+       {pairs.map((pair, pIdx) => {
+        const fromX = pair.from.col * CELL_SIZE + CELL_SIZE / 2;
+        const fromY = pair.from.row * CELL_SIZE + CELL_SIZE / 2;
+        const toX = pair.to.col * CELL_SIZE + CELL_SIZE / 2;
+        const toY = pair.to.row * CELL_SIZE + CELL_SIZE / 2;
+        return (
+          <line
+            key={`pair-line-${pIdx}`}
+            x1={fromX}
+            y1={fromY}
+            x2={toX}
+            y2={toY}
+            stroke={PAIRING_LINE_COLOR}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        );
+      })}
     </svg>
   );
 };
@@ -115,7 +137,7 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
       {Array.from({ length: cols }).map((_, cIdx) => 
         Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { 
           const bIdxInColumnData = maxFabricHeight - 1 - bIdxInVis; 
-          const currentColumn = columns[cIdx] || []; // Ensure column exists
+          const currentColumn = columns[cIdx] || []; 
           const currentBlock = currentColumn[bIdxInColumnData];
 
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
@@ -136,7 +158,7 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                   fill={fillColor}
                   stroke={strokeColor}
                   strokeWidth={currentBlock ? 1 : 0.5}
-                  opacity={blockOpacity} // Apply opacity for hidden blocks
+                  opacity={blockOpacity} 
                   rx="2"
                   style={{ cursor: 'pointer' }}
                   aria-label={
@@ -158,24 +180,68 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                       }
                       const columnDraft = draft.fabricArea.columns[cIdx];
                       
-                      // Pad with temporary nulls to reach the target index if adding/updating
-                      // This helps place the block correctly in the sparse array logic
-                      if (newBlockState !== null) {
-                        while (columnDraft.length <= bIdxInColumnData) {
-                          // This push is conceptual for sparse arrays; direct assignment is key
-                          // We rely on filter below to truly make it sparse.
-                          columnDraft.push(null as any); 
-                        }
+                      // Ensure columnDraft can hold up to bIdxInColumnData
+                      while (columnDraft.length <= bIdxInColumnData && newBlockState !== null) {
+                         // This is tricky because we want sparse arrays.
+                         // If adding a new block, we might need to insert it.
+                         // If it's exactly at the end, push. Otherwise, careful splice.
+                         // The simplest is to pad with nulls, set, then filter.
+                         columnDraft.push(null as any); 
                       }
                       
-                      // Assign new state or mark for removal
-                      columnDraft[bIdxInColumnData] = newBlockState as any; // newBlockState can be null
+                      if(newBlockState === null && bIdxInColumnData < columnDraft.length) {
+                        // Removing a block
+                        columnDraft.splice(bIdxInColumnData, 1);
+                      } else if (newBlockState !== null) {
+                         // Adding or updating a block
+                         // If adding a block to a position that extends the current array, 
+                         // or replacing an existing block.
+                         // This logic assumes that if newBlockState is not null, we intend to place it
+                         // at bIdxInColumnData.
+                         // If bIdxInColumnData is beyond current length, we need to pad conceptually.
+                         // But since we filter nulls, direct assignment is better if the conceptual slot is to be filled.
 
-                      // Re-create the column as a sparse array, filtering out nulls
-                      // and ensuring it doesn't exceed maxFabricHeight.
-                      draft.fabricArea.columns[cIdx] = columnDraft
-                        .filter(block => block !== null && block !== undefined)
-                        .slice(0, draft.fabricArea.maxFabricHeight) as FabricBlockData[];
+                         // If newBlockState is not null, try to place it.
+                         // If bIdxInColumnData is beyond current real blocks, it effectively adds to the top.
+                         // The filter will keep it sparse.
+
+                         // Create a temporary array of maxFabricHeight with nulls
+                         const tempCol = Array(draft.fabricArea.maxFabricHeight).fill(null).map((_, i) => {
+                            const existingBlock = columnDraft.find((b, originalIndex) => {
+                                // This mapping is a bit off, we need to map visual index to data index
+                                // for the *current* data before modification.
+                                // Let's reconsider the update logic to be simpler for sparse arrays.
+                                return draft.fabricArea.maxFabricHeight - 1 - i === originalIndex;
+                            });
+                            return existingBlock;
+                         });
+
+                         // Simplified logic:
+                         // 1. Get current blocks.
+                         // 2. If newBlockState is null, remove block at bIdxInColumnData (if exists).
+                         // 3. If newBlockState is FabricBlockData, update/insert at bIdxInColumnData.
+                         
+                         let updatedColumn = [...columnDraft];
+                         if (newBlockState === null) {
+                            // Find if a block exists at this *data* index and remove
+                            if(bIdxInColumnData < updatedColumn.length) {
+                               updatedColumn.splice(bIdxInColumnData, 1);
+                            }
+                         } else {
+                           // This might create gaps if not careful, but filter handles it
+                           updatedColumn[bIdxInColumnData] = newBlockState;
+                         }
+
+                         draft.fabricArea.columns[cIdx] = updatedColumn
+                            .filter(block => block !== null && block !== undefined)
+                            .slice(0, draft.fabricArea.maxFabricHeight) as FabricBlockData[];
+                      } else {
+                           // newBlockState is null and trying to remove from an already empty slot (or beyond current height)
+                           // No action needed, filter will keep it clean.
+                           draft.fabricArea.columns[cIdx] = columnDraft
+                            .filter(block => block !== null && block !== undefined)
+                            .slice(0, draft.fabricArea.maxFabricHeight) as FabricBlockData[];
+                      }
                     });
                   }}
                 />
