@@ -19,6 +19,7 @@ interface BobbinCellEditorProps {
   isPairingMode: boolean;
   onPairingClick: (rowIndex: number, colIndex: number) => void;
   isSelectedForPairing: boolean;
+  isActuallyPaired: boolean; // New prop
 }
 
 const cellTypeDisplay: Record<BobbinCell['type'], string> = {
@@ -37,7 +38,8 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
   colIndex,
   isPairingMode,
   onPairingClick,
-  isSelectedForPairing
+  isSelectedForPairing,
+  isActuallyPaired
 }) => {
   
   const handleTypeChange = (newType: BobbinCell['type']) => {
@@ -87,21 +89,20 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
           <div
             className={cn(
               "w-full h-full rounded-sm flex items-center justify-center",
-              cell.type === 'hidden' && 'opacity-50',
-              isSelectedForPairing && 'ring-2 ring-offset-1 ring-accent'
+              cell.type === 'hidden' && 'opacity-50'
             )}
             style={{ backgroundColor: cell.color ? COLOR_MAP[cell.color] : 'transparent' }}
             aria-label={`${cellTypeDisplay[cell.type]} cell, color ${cell.color || 'none'}`}
           >
             {cell.type === 'bobbin' && <SpoolIcon className="w-4 h-4 text-white mix-blend-difference" />}
+             {cell.type === 'hidden' && <EyeOffIcon className="w-4 h-4 text-white mix-blend-difference" />}
           </div>
         );
       case 'pipe':
         return (
           <div 
             className={cn(
-              "w-full h-full rounded-sm border-2 flex items-center justify-center",
-              isSelectedForPairing && 'ring-2 ring-offset-1 ring-accent'
+              "w-full h-full rounded-sm border-2 flex items-center justify-center"
             )}
             style={{ 
               borderColor: cell.colors && cell.colors.length > 0 ? COLOR_MAP[cell.colors[0]] : 'hsl(var(--border))',
@@ -114,7 +115,7 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
         );
       case 'empty':
       default:
-        return <div className={cn("w-full h-full bg-muted rounded-sm", isSelectedForPairing && 'ring-2 ring-offset-1 ring-accent')} aria-label="Empty cell"></div>;
+        return <div className={cn("w-full h-full bg-muted rounded-sm")} aria-label="Empty cell"></div>;
     }
   };
 
@@ -132,11 +133,12 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
         <Button
           variant="outline"
           className={cn(
-            "w-12 h-12 p-0 m-0.5 aspect-square focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "w-12 h-12 p-0 m-0.5 aspect-square focus:ring-2 focus:ring-ring focus:ring-offset-2 relative",
             isPairingMode && "cursor-crosshair hover:bg-accent/20",
-            isSelectedForPairing && "ring-2 ring-accent ring-offset-background"
+            isSelectedForPairing && "ring-2 ring-accent ring-offset-background shadow-lg",
+            isActuallyPaired && !isSelectedForPairing && "border-primary/50 border-2" 
           )}
-          aria-label={`Edit cell at row ${rowIndex + 1}, column ${colIndex + 1}. Current type: ${cellTypeDisplay[cell.type]}${isPairingMode ? '. Pairing mode active.' : ''}`}
+          aria-label={`Edit cell at row ${rowIndex + 1}, column ${colIndex + 1}. Current type: ${cellTypeDisplay[cell.type]}${isPairingMode ? '. Pairing mode active.' : ''}${isActuallyPaired ? ' Paired.' : ''}`}
           onClick={handleButtonClick}
         >
           {getCellDisplay()}
@@ -232,6 +234,26 @@ function SpoolIcon(props: React.SVGProps<SVGSVGElement>) {
       <path d="M4 16h16" />
       <ellipse cx="12" cy="12" rx="8" ry="4" />
       <path d="M8 7.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v9c0 1.1-.9 2-2 2H10c-1.1 0-2-.9-2-2V7.5Z" />
+    </svg>
+  );
+}
+
+function EyeOffIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" x2="22" y1="2" y2="22" />
     </svg>
   );
 }

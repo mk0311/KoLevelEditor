@@ -7,7 +7,7 @@ import { BobbinCellEditor } from './BobbinCellEditor';
 import type { BobbinCell, BobbinPairCoordinate } from '@/lib/types';
 import { createEmptyBobbinCell } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Copy, Trash2, Link2, Link2Off } from 'lucide-react'; // Added Link2, Link2Off
+import { Copy, Trash2, Link2, Link2Off } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -139,8 +139,8 @@ export const BobbinGridEditor: React.FC = () => {
     if (!isPairingMode) return;
 
     const clickedCell = cells[rIdx]?.[cIdx];
-    if (!clickedCell || clickedCell.type === 'empty') {
-      toast({ title: "Cannot Pair", description: "Empty cells cannot be paired.", variant: "destructive" });
+    if (!clickedCell || (clickedCell.type !== 'bobbin' && clickedCell.type !== 'hidden')) {
+      toast({ title: "Cannot Pair", description: "Only bobbins or hidden bobbins can be paired.", variant: "destructive" });
       return;
     }
 
@@ -154,6 +154,7 @@ export const BobbinGridEditor: React.FC = () => {
         setFirstPairSelection(null);
         return;
       }
+      // Check if the second cell is already paired (and not with the firstPairSelection itself, though that's covered by existingPairIndex logic earlier)
       if (isCellPaired(rIdx, cIdx)) {
         toast({ title: "Cannot Pair", description: "This bobbin is already part of another pair. Unpair it first.", variant: "destructive" });
         return;
@@ -182,16 +183,16 @@ export const BobbinGridEditor: React.FC = () => {
   
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-       // ... (keyboard navigation logic remains the same)
       if (!gridRef.current || !document.activeElement || !gridRef.current.contains(document.activeElement)) {
-        const popoverTrigger = document.activeElement.closest('[aria-haspopup="dialog"]');
+        const popoverTrigger = document.activeElement?.closest('[aria-haspopup="dialog"]');
         if(!popoverTrigger || !gridRef.current.contains(popoverTrigger)) {
-          return;
+          // Allow global keybinds like undo/redo if focus is outside grid and not in a popover related to the grid.
+          if (!(event.ctrlKey || event.metaKey)) return; 
+        } else {
+           // Focus is inside a popover related to the grid, or directly in the grid.
         }
       }
       
-      if (focusedCell === null && !event.target?.toString().includes('PopoverTrigger')) return;
-
       let currentFocusedRow = focusedCell?.row ?? 0;
       let currentFocusedCol = focusedCell?.col ?? 0;
 
@@ -204,20 +205,50 @@ export const BobbinGridEditor: React.FC = () => {
         }
       }
 
-      switch (event.key) {
-        case 'ArrowUp': /* ... */ break;
-        case 'ArrowDown': /* ... */ break;
-        case 'ArrowLeft': /* ... */ break;
-        case 'ArrowRight': /* ... */ break;
-        case 'c': if (event.ctrlKey || event.metaKey) { event.preventDefault(); cloneRow(currentFocusedRow); } break;
-        case 'd': if (event.ctrlKey || event.metaKey) { event.preventDefault(); document.getElementById(`delete-row-${currentFocusedRow}`)?.click(); } break;
-        case 'p': if (event.ctrlKey || event.metaKey) { event.preventDefault(); togglePairingMode(); } break; // Ctrl+P for pairing
+      // Handle specific key events only if focus is within the grid or related popover
+      if (gridRef.current && (gridRef.current.contains(document.activeElement) || document.activeElement?.closest('[aria-haspopup="dialog"]'))) {
+        switch (event.key) {
+          case 'ArrowUp':
+            event.preventDefault();
+            setFocusedCell(prev => ({ row: Math.max(0, (prev?.row ?? currentFocusedRow) - 1), col: prev?.col ?? currentFocusedCol }));
+            break;
+          case 'ArrowDown':
+            event.preventDefault();
+            setFocusedCell(prev => ({ row: Math.min(rows - 1, (prev?.row ?? currentFocusedRow) + 1), col: prev?.col ?? currentFocusedCol }));
+            break;
+          case 'ArrowLeft':
+            event.preventDefault();
+            setFocusedCell(prev => ({ row: prev?.row ?? currentFocusedRow, col: Math.max(0, (prev?.col ?? currentFocusedCol) - 1) }));
+            break;
+          case 'ArrowRight':
+            event.preventDefault();
+            setFocusedCell(prev => ({ row: prev?.row ?? currentFocusedRow, col: Math.min(cols - 1, (prev?.col ?? currentFocusedCol) + 1) }));
+            break;
+          case 'c':
+            if (event.ctrlKey || event.metaKey) {
+              event.preventDefault();
+              cloneRow(currentFocusedRow);
+            }
+            break;
+          case 'd':
+            if (event.ctrlKey || event.metaKey) {
+              event.preventDefault();
+              document.getElementById(`delete-row-${currentFocusedRow}`)?.click();
+            }
+            break;
+          case 'p':
+            if (event.ctrlKey || event.metaKey) {
+              event.preventDefault();
+              togglePairingMode();
+            }
+            break;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedCell, rows, cols, cloneRow, deleteRow, togglePairingMode]); // Added togglePairingMode
+  }, [focusedCell, rows, cols, levelData.bobbinArea.cells, cloneRow, deleteRow, togglePairingMode]);
 
   useEffect(() => {
     if (focusedCell) {
@@ -290,6 +321,7 @@ export const BobbinGridEditor: React.FC = () => {
                   isPairingMode={isPairingMode}
                   onPairingClick={handlePairingClick}
                   isSelectedForPairing={!!firstPairSelection && firstPairSelection.row === rIdx && firstPairSelection.col === cIdx}
+                  isActuallyPaired={isCellPaired(rIdx, cIdx)}
                 />
               ))}
             </React.Fragment>
