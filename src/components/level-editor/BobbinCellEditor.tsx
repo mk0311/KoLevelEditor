@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/shared/ColorPicker';
 import { NumberSpinner } from '@/components/shared/NumberSpinner';
 import { cn } from '@/lib/utils';
+import { useLevelData } from '@/contexts/LevelDataContext'; // Import useLevelData
 
 interface BobbinCellEditorProps {
   cell: BobbinCell;
@@ -19,7 +20,7 @@ interface BobbinCellEditorProps {
   isPairingMode: boolean;
   onPairingClick: (rowIndex: number, colIndex: number) => void;
   isSelectedForPairing: boolean;
-  isActuallyPaired: boolean; // New prop
+  isActuallyPaired: boolean;
 }
 
 const cellTypeDisplay: Record<BobbinCell['type'], string> = {
@@ -41,7 +42,8 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
   isSelectedForPairing,
   isActuallyPaired
 }) => {
-  
+  const { setActiveEditorArea } = useLevelData(); // Get setActiveEditorArea
+
   const handleTypeChange = (newType: BobbinCell['type']) => {
     const newCellData: BobbinCell = { type: newType };
     if (newType === 'bobbin' || newType === 'hidden') {
@@ -106,6 +108,9 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
             )}
             style={{ 
               borderColor: cell.colors && cell.colors.length > 0 ? COLOR_MAP[cell.colors[0]] : 'hsl(var(--border))',
+              // Updated to show multiple colors as a simple gradient or sectioned background if desired
+              // For simplicity, we'll keep the border approach for now, which implies 2 colors.
+              // Visualizer handles the full stripe display.
               boxShadow: cell.colors && cell.colors.length > 1 ? `0 0 0 2px ${COLOR_MAP[cell.colors[1]]} inset` : 'none'
             }}
             aria-label={`Pipe cell, colors ${cell.colors?.join(', ') || 'none'}`}
@@ -121,10 +126,11 @@ export const BobbinCellEditor: React.FC<BobbinCellEditorProps> = ({
 
   const handleButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (isPairingMode) {
-      event.preventDefault(); // Prevent popover from opening
+      event.preventDefault(); 
       onPairingClick(rowIndex, colIndex);
+    } else {
+      setActiveEditorArea('bobbin'); // Set active area when popover is about to open
     }
-    // If not in pairing mode, the PopoverTrigger will handle opening.
   };
 
   return (

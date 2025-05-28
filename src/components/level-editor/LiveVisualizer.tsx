@@ -52,15 +52,15 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
           if (cell.type === 'hidden' && cell.color) {
             cellElement = (
               <rect 
-                x={x + 0.5} // Offset for stroke
+                x={x + 0.5} 
                 y={y + 0.5} 
                 width={CELL_SIZE - 1} 
                 height={CELL_SIZE - 1} 
                 fill={COLOR_MAP[cell.color] || cell.color} 
-                opacity={0.4} // Slightly more transparent to differentiate stroke
-                stroke={COLOR_MAP[cell.color] || cell.color} // Stroke with the same color but full opacity for dash
-                strokeWidth="1"
-                strokeDasharray="2 2" 
+                opacity={0.3} // More transparent for hidden
+                stroke={COLOR_MAP[cell.color] || cell.color} 
+                strokeWidth="1.5" // Thicker dash for visual clarity
+                strokeDasharray="3 3" 
               />
             );
           }
@@ -98,7 +98,6 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
                     fill={COLOR_MAP[pipeColor] || pipeColor}
                   />
                 ))}
-                 {/* Add a border around the pipe cell to make stripes distinct from background */}
                 <rect x={x} y={y} width={CELL_SIZE} height={CELL_SIZE} fill="none" stroke="hsl(var(--border) / 0.5)" strokeWidth="0.5"/>
               </g>
             );
@@ -125,7 +124,7 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
             stroke={PAIRING_LINE_COLOR}
             strokeWidth="2"
             strokeLinecap="round"
-            className="pointer-events-none" // Ensure lines don't interfere with cell clicks
+            className="pointer-events-none" 
           />
         );
       })}
@@ -134,12 +133,17 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
 };
 
 const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: boolean}> = ({ data, hasErrors }) => {
-  const { setLevelData } = useLevelData();
+  const { setLevelData, setLastInteractedFabricCol, setActiveEditorArea } = useLevelData();
   const { cols, maxFabricHeight, columns } = data;
   
   const blockDisplayHeight = CELL_SIZE - FABRIC_BLOCK_GAP;
   const svgWidth = cols * CELL_SIZE;
   const svgHeight = maxFabricHeight * CELL_SIZE;
+
+  const handleTriggerClick = (colIndex: number) => {
+    setLastInteractedFabricCol(colIndex);
+    setActiveEditorArea('fabric');
+  };
 
   return (
     <svg 
@@ -164,7 +168,7 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
 
           return (
             <Popover key={`fabric-popover-${cIdx}-${bIdxInVis}`}>
-              <PopoverTrigger asChild>
+              <PopoverTrigger asChild onClick={() => handleTriggerClick(cIdx)}>
                 <rect
                   x={x}
                   y={y}
@@ -176,7 +180,10 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                   opacity={blockOpacity} 
                   rx="2"
                   style={{ cursor: 'pointer' }}
-                  className={cn(currentBlock?.hidden && "stroke-dashed stroke-1")} // Apply dashed stroke for hidden blocks
+                  className={cn(
+                    "hover:stroke-primary hover:stroke-2",
+                    currentBlock?.hidden && "stroke-dashed stroke-1"
+                  )}
                   strokeDasharray={currentBlock?.hidden ? "3 3" : undefined}
                   aria-label={
                     currentBlock 
@@ -192,38 +199,29 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                   rowIndexInVisualizer={bIdxInVis} 
                   onBlockChange={(newBlockState: FabricBlockData | null) => {
                     setLevelData(draft => {
-                      const fabricCol = draft.fabricArea.columns[cIdx] || [];
-                      let newFabricCol = [...fabricCol];
-
-                      if (newBlockState === null) { // Remove block
-                        if (bIdxInColumnData < newFabricCol.length && newFabricCol[bIdxInColumnData] !== null) {
-                          newFabricCol.splice(bIdxInColumnData, 1);
+                      let fabricCol = draft.fabricArea.columns[cIdx] || [];
+                      
+                      // Create a temporary array representing the full visual column with nulls
+                      const tempVisualColumn: (FabricBlockData | null)[] = Array(draft.fabricArea.maxFabricHeight).fill(null);
+                      fabricCol.forEach((block, indexInSparse) => {
+                        if (indexInSparse < draft.fabricArea.maxFabricHeight) {
+                           // Assuming block's position from bottom
+                          tempVisualColumn[draft.fabricArea.maxFabricHeight - 1 - indexInSparse] = block;
                         }
-                      } else { // Add or update block
-                        // Ensure array is long enough, conceptually padding with blocks if inserting beyond current length
-                        // This will effectively push blocks "up" if inserting below existing blocks, 
-                        // or add to the top if bIdxInColumnData is at or beyond current length.
-                        // However, we need to be careful about maintaining maxFabricHeight.
-                        
-                        // Create a temporary array representing the full visual column
-                        const tempVisualCol: (FabricBlockData | null)[] = Array(draft.fabricArea.maxFabricHeight).fill(null);
-                        
-                        // Populate with existing blocks based on their bIdxInColumnData
-                        newFabricCol.forEach((block, indexInSparseArray) => {
-                          // This mapping is tricky because newFabricCol is sparse.
-                          // We need to map bIdxInColumnData to the sparse array's indices.
-                          // Let's assume bIdxInColumnData directly maps for update/add.
-                          // If adding, it might extend the array.
-                        });
-
-                        // Simple approach: update or add at the specific data index
-                        newFabricCol[bIdxInColumnData] = newBlockState;
+                      });
+                      
+                      // Place or remove the block at the correct visual position (which translates to bIdxInColumnData from bottom)
+                      tempVisualColumn[bIdxInVis] = newBlockState; 
+                                            
+                      // Convert back to sparse array, filtering nulls and respecting bottom-up storage
+                      const newSparseColumn: FabricBlockData[] = [];
+                      for (let i = draft.fabricArea.maxFabricHeight - 1; i >= 0; i--) {
+                        if (tempVisualColumn[i]) {
+                          newSparseColumn.unshift(tempVisualColumn[i]!); // Add to beginning to reverse order
+                        }
                       }
                       
-                      // Filter out nulls to keep sparse, then cap at maxFabricHeight
-                      draft.fabricArea.columns[cIdx] = newFabricCol
-                        .filter(block => block !== null && block !== undefined)
-                        .slice(0, draft.fabricArea.maxFabricHeight) as FabricBlockData[];
+                      draft.fabricArea.columns[cIdx] = newSparseColumn.slice(0, draft.fabricArea.maxFabricHeight);
                     });
                   }}
                 />
