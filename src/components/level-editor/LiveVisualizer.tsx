@@ -57,9 +57,9 @@ const BobbinVisualizer: React.FC<{data: LevelData['bobbinArea'], hasErrors: bool
                 width={CELL_SIZE - 1} 
                 height={CELL_SIZE - 1} 
                 fill={COLOR_MAP[cell.color] || cell.color} 
-                opacity={0.3} // More transparent for hidden
+                opacity={0.3} 
                 stroke={COLOR_MAP[cell.color] || cell.color} 
-                strokeWidth="1.5" // Thicker dash for visual clarity
+                strokeWidth="1.5" 
                 strokeDasharray="3 3" 
               />
             );
@@ -155,12 +155,19 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
     >
       {Array.from({ length: cols }).map((_, cIdx) => 
         Array.from({ length: maxFabricHeight }).map((_, bIdxInVis) => { 
-          const bIdxInColumnData = maxFabricHeight - 1 - bIdxInVis; 
-          const currentColumn = columns[cIdx] || []; 
-          const currentBlock = currentColumn[bIdxInColumnData];
+          // bIdxInVis: 0 is top visual slot, maxFabricHeight-1 is bottom visual slot
+          // bIdxInColumnData: 0 is bottom-most actual block in sparse array, length-1 is top-most actual block
+          const currentColumnSparse = columns[cIdx] || []; 
+          // Map visual index (bIdxInVis, 0=top) to sparse data index (0=bottom)
+          // A block at visual index bIdxInVis corresponds to a potential block at sparse index (maxFabricHeight - 1 - bIdxInVis)
+          // if the sparse array was full.
+          // Since it's sparse, we directly check: currentColumnSparse[maxFabricHeight - 1 - bIdxInVis]
+          const dataIndexFromBottom = maxFabricHeight - 1 - bIdxInVis;
+          const currentBlock = currentColumnSparse[dataIndexFromBottom];
+
 
           const x = cIdx * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
-          const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2;
+          const y = bIdxInVis * CELL_SIZE + FABRIC_BLOCK_GAP / 2; // y still based on visual index
 
           const fillColor = currentBlock ? (COLOR_MAP[currentBlock.color] || currentBlock.color) : FABRIC_EMPTY_SLOT_COLOR;
           const strokeColor = currentBlock ? (COLOR_MAP[currentBlock.color] || currentBlock.color) : "hsl(var(--border))";
@@ -199,29 +206,39 @@ const FabricVisualizer: React.FC<{data: LevelData['fabricArea'], hasErrors: bool
                   rowIndexInVisualizer={bIdxInVis} 
                   onBlockChange={(newBlockState: FabricBlockData | null) => {
                     setLevelData(draft => {
-                      let fabricCol = draft.fabricArea.columns[cIdx] || [];
+                      const currentSparseColumn = draft.fabricArea.columns[cIdx] || [];
                       
-                      // Create a temporary array representing the full visual column with nulls
-                      const tempVisualColumn: (FabricBlockData | null)[] = Array(draft.fabricArea.maxFabricHeight).fill(null);
-                      fabricCol.forEach((block, indexInSparse) => {
-                        if (indexInSparse < draft.fabricArea.maxFabricHeight) {
-                           // Assuming block's position from bottom
-                          tempVisualColumn[draft.fabricArea.maxFabricHeight - 1 - indexInSparse] = block;
-                        }
-                      });
+                      // 1. Create a full representation of the visual column (top-down: index 0 is top slot)
+                      const visualColumnRepresentation: (FabricBlockData | null)[] = Array(draft.fabricArea.maxFabricHeight).fill(null);
                       
-                      // Place or remove the block at the correct visual position (which translates to bIdxInColumnData from bottom)
-                      tempVisualColumn[bIdxInVis] = newBlockState; 
-                                            
-                      // Convert back to sparse array, filtering nulls and respecting bottom-up storage
-                      const newSparseColumn: FabricBlockData[] = [];
-                      for (let i = draft.fabricArea.maxFabricHeight - 1; i >= 0; i--) {
-                        if (tempVisualColumn[i]) {
-                          newSparseColumn.unshift(tempVisualColumn[i]!); // Add to beginning to reverse order
+                      // Populate visualColumnRepresentation from currentSparseColumn
+                      // currentSparseColumn[j] is the j-th block from the bottom (index 0 of sparse = bottom block).
+                      // Its visual index is (maxFabricHeight - 1 - j).
+                      for (let j = 0; j < currentSparseColumn.length; j++) {
+                        const block = currentSparseColumn[j];
+                        const visualIndex = draft.fabricArea.maxFabricHeight - 1 - j;
+                        if (visualIndex >= 0 && visualIndex < draft.fabricArea.maxFabricHeight) {
+                          visualColumnRepresentation[visualIndex] = block;
                         }
                       }
                       
-                      draft.fabricArea.columns[cIdx] = newSparseColumn.slice(0, draft.fabricArea.maxFabricHeight);
+                      // 2. Modify the visualColumnRepresentation based on the click
+                      // bIdxInVis is the visual index clicked (0=top, maxFabricHeight-1=bottom)
+                      visualColumnRepresentation[bIdxInVis] = newBlockState; 
+                                            
+                      // 3. Convert visualColumnRepresentation (top-down) back to a sparse, bottom-up array
+                      const newSparseColumnResult: FabricBlockData[] = [];
+                      // Iterate visual slots from bottom (maxFabricHeight-1) up to top (0)
+                      for (let k_visualRow = draft.fabricArea.maxFabricHeight - 1; k_visualRow >= 0; k_visualRow--) {
+                        const blockInSlot = visualColumnRepresentation[k_visualRow];
+                        if (blockInSlot) {
+                          // When k_visualRow is maxH-1 (bottom visual), this block is PUSHED. It becomes newSparseColumnResult[0].
+                          // When k_visualRow is 0 (top visual), this block is PUSHED. It becomes newSparseColumnResult[length-1].
+                          // This builds newSparseColumnResult in order [BottomBlock, ..., TopBlock]
+                          newSparseColumnResult.push(blockInSlot);
+                        }
+                      }
+                      draft.fabricArea.columns[cIdx] = newSparseColumnResult;
                     });
                   }}
                 />
@@ -261,3 +278,4 @@ export const LiveVisualizer: React.FC<LiveVisualizerProps> = ({ editorType, clas
     </div>
   );
 };
+
