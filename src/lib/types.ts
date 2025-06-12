@@ -4,7 +4,7 @@ export const FABRIC_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green'];
 // Updated to match AVAILABLE_COLORS from constants.ts if they should be the same
 export const BOBBIN_AREA_COLORS: BobbinColor[] = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Brown', 'Teal', 'White', 'DarkGreen', 'Gray', 'Black', 'Magenta'];
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface BobbinPairCoordinate {
   row: number;

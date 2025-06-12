@@ -2,24 +2,24 @@
 import type { BobbinCell, FabricBlockData, LevelData, BobbinColor, Difficulty, BobbinPair } from './types';
 
 export const DEFAULT_LEVEL_NUMBER = 1;
-export const DEFAULT_DIFFICULTY: Difficulty = 'medium';
+export const DEFAULT_DIFFICULTY: Difficulty = 'Medium';
 export const DEFAULT_BOBBIN_ROWS = 5;
 export const DEFAULT_BOBBIN_COLS = 5;
 export const DEFAULT_FABRIC_COLS = 4;
 export const DEFAULT_MAX_FABRIC_HEIGHT = 8;
 
 export const AVAILABLE_COLORS: BobbinColor[] = [
-  'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 
+  'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink',
   'Brown', 'Teal', 'White', 'DarkGreen', 'Gray', 'Black', 'Magenta'
 ];
 export const LIMITED_FABRIC_COLORS: BobbinColor[] = [
-  'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 
+  'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink',
   'Brown', 'Teal', 'White', 'DarkGreen', 'Gray', 'Black', 'Magenta'
 ];
 
 export const createEmptyBobbinCell = (): BobbinCell => ({ type: 'empty' });
 
-export const createFabricBlock = (color?: BobbinColor, hidden: boolean = false): FabricBlockData => ({ 
+export const createFabricBlock = (color?: BobbinColor, hidden: boolean = false): FabricBlockData => ({
   color: color || LIMITED_FABRIC_COLORS[0],
   hidden,
 });
@@ -40,13 +40,13 @@ export const createDefaultLevelData = (): LevelData => ({
     maxFabricHeight: DEFAULT_MAX_FABRIC_HEIGHT,
     columns: Array(DEFAULT_FABRIC_COLS)
       .fill(null)
-      .map(() => []), 
+      .map(() => []),
   },
 });
 
 export const EXAMPLE_LEVEL_DATA: LevelData = {
   level: 1,
-  difficulty: 'easy',
+  difficulty: 'Easy',
   bobbinArea: {
     rows: 7,
     cols: 7,
@@ -83,9 +83,9 @@ export const EXAMPLE_LEVEL_DATA: LevelData = {
     maxFabricHeight: 8,
     columns: [
       [{ color: "Red", hidden: false }, { color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Blue", hidden: true }, { color: "Green" }, { color: "Red" }, { color: "Blue" }].slice(0,8),
-      [{ color: "Blue" }, { color: "Green" }, { color: "Red", hidden: false }].slice(0,8), 
+      [{ color: "Blue" }, { color: "Green" }, { color: "Red", hidden: false }].slice(0,8),
       [{ color: "Green" }, { color: "Red" }, { color: "Red" }, { color: "Green" }, { color: "Red", hidden: true }, { color: "Blue" }].slice(0,8),
-      [], 
+      [],
     ].map(col => col.filter(block => block !== null).map(b => ({...b, hidden: b.hidden === undefined ? false : b.hidden }))),
   },
 };

@@ -2,7 +2,7 @@
 import type { LevelData, ValidationMessage, BobbinColor, FabricBlockData, Difficulty, BobbinPairCoordinate } from './types';
 import { AVAILABLE_COLORS, LIMITED_FABRIC_COLORS } from './constants';
 
-const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+const VALID_DIFFICULTIES: Difficulty[] = ['Easy', 'Medium', 'Hard'];
 
 function isCoordEqual(c1: BobbinPairCoordinate, c2: BobbinPairCoordinate): boolean {
   return c1.row === c2.row && c1.col === c2.col;
@@ -55,7 +55,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
     if (cell.type === 'pipe') {
       if (!cell.colors || cell.colors.length < 2) {
         messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Bobbin Area: Pipe cell ${cellPos} must specify at least 2 colors.` });
-      } else if (cell.colors.length > 5) { 
+      } else if (cell.colors.length > 5) {
         messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Bobbin Area: Pipe cell ${cellPos} cannot have more than 5 colors.` });
       }
       cell.colors?.forEach(color => {
@@ -102,7 +102,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
       pairedCellCoordinates.add(toKey);
     });
   }
-  
+
   // Fabric Area Validations
   if (data.fabricArea.cols !== data.fabricArea.columns.length) {
     messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Declared columns (${data.fabricArea.cols}) do not match actual columns array length (${data.fabricArea.columns.length}).` });
@@ -113,7 +113,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
     if (column.length > data.fabricArea.maxFabricHeight) {
       messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Column ${cIdx + 1} actual block count (${column.length}) exceeds max fabric height (${data.fabricArea.maxFabricHeight}).` });
     }
-    column.forEach((block: FabricBlockData, bIdx) => { 
+    column.forEach((block: FabricBlockData, bIdx) => {
       if (!block.color) {
         messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Block at (Col ${cIdx + 1}, Stack pos ${bIdx + 1}) is missing a color.` });
       } else if (!LIMITED_FABRIC_COLORS.includes(block.color) && !/^#[0-9A-Fa-f]{6}$/.test(block.color)) {
@@ -124,7 +124,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
       }
     });
   });
-  
+
   fabricColorsUsed.forEach(fc => {
     if (!allBobbinColors.has(fc)) {
        messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Data Integrity: No bobbin of color "${fc}" found in Bobbin Area, but it's used in the Fabric Area.` });
