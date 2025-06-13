@@ -34,7 +34,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
     }
   });
 
-  const activeBobbinColorCounts = new Map<BobbinColor, number>();
+  const effectiveBobbinColorCounts = new Map<BobbinColor, number>();
   const allBobbinColorsPresent = new Set<BobbinColor>(); // Includes bobbins, hidden bobbins, and pipe colors
   const pairedCellCoordinates = new Set<string>(); // Store "row,col" strings
 
@@ -50,9 +50,7 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
         }
         if (cell.color) {
           allBobbinColorsPresent.add(cell.color);
-          if (cell.type === 'bobbin') {
-            activeBobbinColorCounts.set(cell.color, (activeBobbinColorCounts.get(cell.color) || 0) + 1);
-          }
+          effectiveBobbinColorCounts.set(cell.color, (effectiveBobbinColorCounts.get(cell.color) || 0) + 1);
         }
       }
       if (cell.type === 'pipe') {
@@ -61,11 +59,14 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
         } else if (cell.colors.length > 5) {
           messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Bobbin Area: Pipe cell ${cellPos} cannot have more than 5 colors.` });
         }
-        cell.colors?.forEach(color => {
-          if (!AVAILABLE_COLORS.includes(color) && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-           // messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Bobbin Area: Pipe cell ${cellPos} has an undefined color "${color}".` });
+        cell.colors?.forEach(pipeColor => {
+          if (!AVAILABLE_COLORS.includes(pipeColor) && !/^#[0-9A-Fa-f]{6}$/.test(pipeColor)) {
+           // messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Bobbin Area: Pipe cell ${cellPos} has an undefined color "${pipeColor}".` });
           }
-          if (color) allBobbinColorsPresent.add(color);
+          if (pipeColor) {
+            allBobbinColorsPresent.add(pipeColor);
+            effectiveBobbinColorCounts.set(pipeColor, (effectiveBobbinColorCounts.get(pipeColor) || 0) + 1);
+          }
         });
       }
     });
@@ -119,42 +120,41 @@ export const validateLevelData = (data: LevelData): ValidationMessage[] => {
     if (column.length > data.fabricArea.maxFabricHeight) {
       messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Column ${cIdx + 1} actual block count (${column.length}) exceeds max fabric height (${data.fabricArea.maxFabricHeight}).` });
     }
-    column.forEach((block: FabricBlockData, bIdx) => { // block is an object, not FabricBlockData | null
+    column.forEach((block: FabricBlockData, bIdx) => { 
       if (!block.color) {
         messages.push({ id: `val-${idCounter++}`, type: 'error', message: `Fabric Area: Block at (Col ${cIdx + 1}, Stack pos ${bIdx + 1}) is missing a color.` });
       } else if (!LIMITED_FABRIC_COLORS.includes(block.color) && !/^#[0-9A-Fa-f]{6}$/.test(block.color)) {
        // messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Fabric Area: Block at (Col ${cIdx + 1}, Stack pos ${bIdx + 1}) has an undefined color "${block.color}".` });
       }
-      if (block.color && !block.hidden) { // Only count visible fabric blocks
+      if (block.color && !block.hidden) { 
         visibleFabricColorCounts.set(block.color, (visibleFabricColorCounts.get(block.color) || 0) + 1);
       }
     });
   });
 
   // Data Integrity Check: Fabric colors must have corresponding bobbins of any type (bobbin, hidden, or pipe)
-  // This check uses allBobbinColorsPresent which includes all types.
   const allFabricColorsUsed = new Set<BobbinColor>();
     data.fabricArea.columns.flat().forEach(block => {
         if (block?.color) allFabricColorsUsed.add(block.color);
     });
 
   allFabricColorsUsed.forEach(fc => {
-    if (!allBobbinColorsPresent.has(fc)) { // Check against all types of bobbins for existence
+    if (!allBobbinColorsPresent.has(fc)) { 
        messages.push({ id: `val-${idCounter++}`, type: 'warning', message: `Data Integrity Warning: Fabric uses color "${fc}", but no bobbin (of any type: bobbin, hidden, or pipe) with this color exists in the Bobbin Area.` });
     }
   });
 
-  // New Validation: Bobbin count * 3 === Fabric count (for active bobbins and visible fabric)
+  // New Validation: Effective bobbin count * 3 === Fabric count (for visible fabric)
   AVAILABLE_COLORS.forEach(color => {
-    const bobbinCount = activeBobbinColorCounts.get(color) || 0;
+    const effectiveBobbinCount = effectiveBobbinColorCounts.get(color) || 0;
     const fabricCount = visibleFabricColorCounts.get(color) || 0;
-    const expectedFabricCount = bobbinCount * 3;
+    const expectedFabricCount = effectiveBobbinCount * 3;
 
     if (fabricCount !== expectedFabricCount) {
       messages.push({ 
         id: `val-${idCounter++}`, 
         type: 'error', 
-        message: `Color Balance "${color}": Bobbin count (${bobbinCount}) x 3 = ${expectedFabricCount}. Expected ${expectedFabricCount} visible fabric blocks, but found ${fabricCount}.` 
+        message: `Color Balance "${color}": Effective bobbin count (from bobbins, hidden bobbins, and pipes: ${effectiveBobbinCount}) x 3 = ${expectedFabricCount}. Expected ${expectedFabricCount} visible fabric blocks, but found ${fabricCount}.` 
       });
     }
   });
